@@ -1,8 +1,7 @@
-import numpy as np
 
 class isa():
     #discrete state discrete action absolute
-    def __init__(self, field_size = 5, reward_radius = 2, n_session = 0, n_move = 3, tmax_trial = 5, trial_max = 100):
+    def __init__(self, field_size = 5, reward_radius = 1, n_session = 1, n_move = 3, tmax_trial = 5, trial_max = 100):
         """
         field_size : width and height of field
         reward_radius : radius of target area
@@ -24,7 +23,7 @@ class isa():
         self.tmax_trial = tmax_trial
         self.trial_max = trial_max
         self.tmax= self.tmax_trial * self.trial_max
-        self.trial_session_change = np.random.choice(np.arange(self.trial_max),self.n_session)
+        self.trial_session_change = np.random.choice(np.arange(self.trial_max),self.n_session - 1)
         
         self.session = 0
         self.trial = 0
@@ -34,12 +33,15 @@ class isa():
         self.reward_size = 1.0 / self.trial_max
         self.trial_result=[]
             
-    def reset(self):
+    def reset(self, test = False):
         #session trial t_in_trial
 
         self.reset_reward()
         self.reset_position()
-        self.trial_session_change = np.random.choice(np.arange(self.trial_max),self.n_session)
+        if test:
+            self.trial_session_change = np.int32(np.linspace(0,self.trial_max,self.n_session + 1,endpoint=False))[1:]
+        else:
+            self.trial_session_change = np.random.choice(np.arange(self.trial_max),self.n_session - 1)
         
         self.session = 0
         self.trial = 0
@@ -50,32 +52,18 @@ class isa():
         self.trial_result=[]
         self.pre_position_rec = []
         self.post_position_rec = []
+        self.hit_rec = []
         self.action_rec = []
+        self.trial_num_rec = []
+        self.saccade_num_rec = []
+        self.cum_reward_rec = []
+        self.reward_place_rec = []
+        self.trial_finish_rec = []
+        self.trial_start_rec = []
         self.transform_obs()
         
         return np.append(self.position_one_hot,0)
-    
-    def reset_test(self):
-        #reset for test
-        #make a situation easy to understand
-        self.reset_reward()
-        self.reset_position()
-        self.trial_session_change = np.int32(np.linspace(0,self.trial_max,self.n_session+1,endpoint=False))
-        
-        self.session = 0
-        self.trial = 0
-        self.t_trial = 0
-        self.t_cum = 0
-        self.success_trial = 0
-        self.fail_trial = 0
-        self.trial_result=[]
-        self.pre_position_rec = []
-        self.post_position_rec = []
-        self.action_rec = []
-        self.transform_obs()
-        
-        return np.append(self.position_one_hot,0)
-    
+
     def reset_session(self):
         #session reset
         self.reset_reward()
@@ -123,12 +111,12 @@ class isa():
 #         print('pre positon', self.position)
         action = self.act_proc(action)
 #         print('action', action)
-        self.pre_position_rec.append(self.position)
+        self.pre_position_rec.append(self.position.copy())
         self.position += action
-        self.post_position_rec.append(self.position)
-        self.action_rec.append(action)
 #         print('post positon', self.position)
         self.check_position()
+        self.post_position_rec.append(self.position.copy())
+        self.action_rec.append(action)
 #         print('checked positon', self.position)
 
         self.transform_obs()
@@ -169,6 +157,16 @@ class isa():
         if self.trial >= self.trial_max:
             done = True    
         
+        self.hit_rec.append(reward)
+        self.trial_num_rec.append(self.trial)
+        self.saccade_num_rec.append(self.t_trial)
+        self.cum_reward_rec.append(np.sum(self.hit_rec))
+        self.reward_place_rec.append(self.reward_place)
+        self.trial_finish_rec.append(flag_trial_finish)
+        self.trial_start_rec.append(self.t_trial == 1)
+        
+        
+        
         return np.append(obs,reward),reward,done,info
             
     
@@ -180,7 +178,7 @@ class isa():
                 self.position[k] = 0
     def reward_check(self):
         dis = np.sqrt(np.sum((self.position - self.reward_place)**2))
-        if dis < self.reward_radius:
+        if dis <= self.reward_radius:
             reward = self.reward_size
         else:
             reward = 0
@@ -188,3 +186,76 @@ class isa():
     def transform_obs(self):
         self.position_one_hot = np.zeros([self.field_size, self.field_size])
         self.position_one_hot[self.position[0], self.position[1]] = 1
+    def sample_random_action(self):
+        a = np.random.randint(self.n_act)
+        return a
+    
+    
+    
+    def plot_set(self,ax1):
+        ax1.set_xlim([0 - 0.5, env.field_size - 0.5])
+        ax1.set_ylim([0 - 0.5, env.field_size - 0.5])
+        ax1.set_aspect('equal', adjustable='box')
+        ax1.vlines(range(env.field_size),-0.5,env.field_size-0.5,alpha = 0.3)
+        ax1.hlines(range(env.field_size),-0.5,env.field_size-0.5,alpha = 0.3)
+        return ax1
+
+    def plot(self,env,k,ax1):
+
+        obs1 = env.pre_position_rec[k]
+        obs2 = env.post_position_rec[k]
+        hit = env.hit_rec[k]
+        trial_num = env.trial_num_rec[k]
+        saccade_num = env.saccade_num_rec[k]
+        cum_reward = env.cum_reward_rec[k]
+        reward_place = env.reward_place_rec[k]
+        reward_radius = env.reward_radius
+        trial_finish = env.trial_finish_rec[k]
+        trial_start  = env.trial_start_rec[k]
+
+        if trial_start:
+            img1 = ax1.scatter(obs1[0],obs1[1],color = 'g')
+        else:
+            img1 = ax1.scatter(obs1[0],obs1[1],color = 'k')
+
+        if hit == 0:
+            if trial_finish:
+                img2 = ax1.scatter(obs2[0],obs2[1],color = 'c')
+            else:
+                img2 = ax1.scatter(obs2[0],obs2[1],color = 'k')
+        elif hit > 0:
+            img2 = ax1.scatter(obs2[0],obs2[1],color = 'r')
+
+        img3 = ax1.quiver(obs1[0],obs1[1],obs2[0] - obs1[0],obs2[1] - obs1[1],angles = 'xy', scale_units='xy', scale=1)
+    #     ax1.set_title('trial : {}, saccade : {}, cum_reward : {}'.format(trial_num,saccade_num,cum_reward))
+        tit = 'trial : {}, saccade : {}, cum_reward : {}'.format(trial_num,saccade_num,cum_reward)
+        img4 = plt.text(-0.15, env.field_size - 1 + 0.15, tit)
+
+        im = self.plot_circle(reward_place, reward_radius, ax1)
+
+
+        return [img1,img2,img3,img4] + im
+
+    def plot_circle(self,xy,radius,ax1,color = 'r'):
+        x = xy[0]
+        y = xy[1]
+        xx = np.linspace(-radius, radius, 1000)
+        temp = np.sqrt(radius**2 - xx**2)
+        img1 = ax1.plot(xx + x, temp + y, color)
+        img2 = ax1.plot(xx + x, -temp + y, color)
+        return img1 + img2
+    
+    
+    def save_animation(self,fn,save_range):
+        ims = []
+        fig = plt.figure(figsize=[5,5])
+        ax1 = fig.add_subplot(111)
+        ax1 = self.plot_set(ax1)
+
+        n = min(save_range,len(env.cum_reward_rec))
+        for k in range(n):
+            img = self.plot(env,k,ax1)
+            ims.append(img)
+        ani = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
+        ani.save(fn, writer="imagemagick")
+        plt.close()
