@@ -12,7 +12,7 @@ class isa():
         self.reward_radius = reward_radius
         
         self.n_session = n_session
-        self.n_obs = self.field_size **2 + 1
+        self.n_obs = self.field_size * 2 + 1
         
         ###
         self.n_move = n_move
@@ -120,7 +120,7 @@ class isa():
 #         print('checked positon', self.position)
 
         self.transform_obs()
-        obs = self.position_one_hot
+#         obs = self.position_one_hot
         reward,dis = self.reward_check()
         info = {'distance' : dis,
                 'trial'    : self.trial,
@@ -146,11 +146,13 @@ class isa():
         
         if flag_session_finish:
             self.reset_session()
-            obs = self.position_one_hot
+#             obs = self.position_one_hot
         if flag_trial_finish:
             self.reset_trial()
-            obs = self.position_one_hot
+#             obs = self.position_one_hot
             
+#         obs = self.position_one_hot
+        obs = self.position_one_hot_xy
         
         
         done = False
@@ -186,6 +188,14 @@ class isa():
     def transform_obs(self):
         self.position_one_hot = np.zeros([self.field_size, self.field_size])
         self.position_one_hot[self.position[0], self.position[1]] = 1
+        
+        self.position_one_hot_x = np.zeros(self.field_size)
+        self.position_one_hot_x[self.position[0]] = 1
+        self.position_one_hot_y = np.zeros(self.field_size)
+        self.position_one_hot_y[self.position[1]] = 1
+        self.position_one_hot_xy = np.hstack([self.position_one_hot_x, self.position_one_hot_y])
+        
+        
     def sample_random_action(self):
         a = np.random.randint(self.n_act)
         return a
@@ -200,18 +210,18 @@ class isa():
         ax1.hlines(range(env.field_size),-0.5,env.field_size-0.5,alpha = 0.3)
         return ax1
 
-    def plot(self,env,k,ax1):
+    def plot(self,k,ax1):
 
-        obs1 = env.pre_position_rec[k]
-        obs2 = env.post_position_rec[k]
-        hit = env.hit_rec[k]
-        trial_num = env.trial_num_rec[k]
-        saccade_num = env.saccade_num_rec[k]
-        cum_reward = env.cum_reward_rec[k]
-        reward_place = env.reward_place_rec[k]
-        reward_radius = env.reward_radius
-        trial_finish = env.trial_finish_rec[k]
-        trial_start  = env.trial_start_rec[k]
+        obs1 = self.pre_position_rec[k]
+        obs2 = self.post_position_rec[k]
+        hit = self.hit_rec[k]
+        trial_num = self.trial_num_rec[k]
+        saccade_num = self.saccade_num_rec[k]
+        cum_reward = self.cum_reward_rec[k]
+        reward_place = self.reward_place_rec[k]
+        reward_radius = self.reward_radius
+        trial_finish = self.trial_finish_rec[k]
+        trial_start  = self.trial_start_rec[k]
 
         if trial_start:
             img1 = ax1.scatter(obs1[0],obs1[1],color = 'g')
