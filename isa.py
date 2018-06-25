@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 class isa():
     #discrete state discrete action absolute
@@ -95,11 +96,17 @@ class isa():
         reward, dis = self.reward_check()
         if reward == 1:
             self.reset_position()
-    
+
     def act_proc(self,action):
-        act_y =int(action / self.n_move)
+        act_y = int(action / self.n_move)
         act_x = int(action % self.n_move) 
         return(np.array([act_y-self.center,act_x-self.center]))
+
+
+    def act_proc_inv(self,action1d):
+        a_temp = (action1d + self.center)
+        return a_temp[1] + a_temp[0] * self.n_move
+
     
     def step(self,action):
         
@@ -202,14 +209,36 @@ class isa():
         a = np.random.randint(self.n_act)
         return a
     
+    def sample_ideal_action(self):
+        ideal_direction = self.reward_place - self.position
+        ideal_direction[ideal_direction > self.center] = self.center
+        ideal_direction[ideal_direction < -self.center] = - self.center
+        ideal_act = self.act_proc_inv(ideal_direction)
+        return ideal_act
     
+    def calc_reward_base(self,mode,n=100):
+        r_sum_rec = []
+        for ite in range(n):
+            self.reset()
+            r_sum = 0
+            while True:
+                if mode == 'random':
+                    a = self.sample_random_action()
+                elif mode == 'ideal':
+                    a = self.sample_ideal_action()
+                _,r,d,_ = self.step(a)
+                r_sum += r
+                if d:
+                    break
+            r_sum_rec.append(r_sum)
+        return np.mean(r_sum_rec)    
     
     def plot_set(self,ax1):
-        ax1.set_xlim([0 - 0.5, env.field_size - 0.5])
-        ax1.set_ylim([0 - 0.5, env.field_size - 0.5])
+        ax1.set_xlim([0 - 0.5, self.field_size - 0.5])
+        ax1.set_ylim([0 - 0.5, self.field_size - 0.5])
         ax1.set_aspect('equal', adjustable='box')
-        ax1.vlines(range(env.field_size),-0.5,env.field_size-0.5,alpha = 0.3)
-        ax1.hlines(range(env.field_size),-0.5,env.field_size-0.5,alpha = 0.3)
+        ax1.vlines(range(self.field_size),-0.5,self.field_size-0.5,alpha = 0.3)
+        ax1.hlines(range(self.field_size),-0.5,self.field_size-0.5,alpha = 0.3)
         return ax1
 
     def plot(self,k,ax1):
@@ -241,7 +270,7 @@ class isa():
         img3 = ax1.quiver(obs1[0],obs1[1],obs2[0] - obs1[0],obs2[1] - obs1[1],angles = 'xy', scale_units='xy', scale=1)
     #     ax1.set_title('trial : {}, saccade : {}, cum_reward : {}'.format(trial_num,saccade_num,cum_reward))
         tit = 'trial : {}, saccade : {}, cum_reward : {}'.format(trial_num,saccade_num,cum_reward)
-        img4 = plt.text(-0.15, env.field_size - 1 + 0.15, tit)
+        img4 = plt.text(-0.15, self.field_size - 1 + 0.15, tit)
 
         im = self.plot_circle(reward_place, reward_radius, ax1)
 
@@ -264,9 +293,9 @@ class isa():
         ax1 = fig.add_subplot(111)
         ax1 = self.plot_set(ax1)
 
-        n = min(save_range,len(env.cum_reward_rec))
+        n = min(save_range,len(self.cum_reward_rec))
         for k in range(n):
-            img = self.plot(env,k,ax1)
+            img = self.plot(k,ax1)
             ims.append(img)
         ani = animation.ArtistAnimation(fig, ims, interval=300, repeat_delay=1000)
         ani.save(fn, writer="imagemagick")
