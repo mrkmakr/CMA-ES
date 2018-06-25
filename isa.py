@@ -64,7 +64,7 @@ class isa():
         self.trial_start_rec = []
         self.transform_obs()
         
-        return np.append(self.position_one_hot,0)
+        return np.append(self.position_one_hot_xy,0)
 
     def reset_session(self):
         #session reset
