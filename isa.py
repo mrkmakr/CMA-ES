@@ -110,6 +110,10 @@ class isa():
     
     def step(self,action):
         
+        if len(action) != 2:
+            print('action error')
+            
+        
         self.t_cum += 1
         self.t_trial += 1
         
@@ -118,7 +122,7 @@ class isa():
         flag_env_finish = False
 #         print('raw action', action)
 #         print('pre positon', self.position)
-        action = self.act_proc(action)
+#         action = self.act_proc(action)
 #         print('action', action)
         self.pre_position_rec.append(self.position.copy())
         self.position += action
@@ -204,16 +208,17 @@ class isa():
         self.position_one_hot_y[self.position[1]] = 1
         self.position_one_hot_xy = np.hstack([self.position_one_hot_x, self.position_one_hot_y])
         
-        
+    
     def sample_random_action(self):
-        a = np.random.randint(self.n_act)
+        a = np.random.randint(0,self.n_move,2)
         return a
     
     def sample_ideal_action(self):
         ideal_direction = self.reward_place - self.position
         ideal_direction[ideal_direction > self.center] = self.center
         ideal_direction[ideal_direction < -self.center] = - self.center
-        ideal_act = self.act_proc_inv(ideal_direction)
+#         ideal_act = self.act_proc_inv(ideal_direction)
+        ideal_act = ideal_direction
         return ideal_act
     
     def calc_reward_base(self,mode,n=100):
