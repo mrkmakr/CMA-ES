@@ -20,7 +20,7 @@ class isa():
         ###
         self.n_move = n_move
         self.center = int((n_move-1)/2)
-        self.n_act = self.n_move**2
+        self.n_act = self.n_move * 2
         ###
         
         self.tmax_trial = tmax_trial
@@ -65,7 +65,7 @@ class isa():
         self.trial_start_rec = []
         self.transform_obs()
         
-        return np.append(self.position_one_hot_xy,0)
+        return np.append(self.position_one_hot_xy,[0,1])
 
     def reset_session(self):
         #session reset
@@ -178,11 +178,12 @@ class isa():
         self.cum_reward_rec.append(np.sum(self.hit_rec))
         self.reward_place_rec.append(self.reward_place)
         self.trial_finish_rec.append(flag_trial_finish)
-        self.trial_start_rec.append(self.t_trial == 1)
+        new_trial_or_not = self.t_trial == 1
+        self.trial_start_rec.append(new_trial_or_not)
         
         
         
-        return np.append(obs,reward),reward,done,info
+        return np.append(obs,[reward,new_trial_or_not]),reward,done,info
             
     
     def check_position(self):
