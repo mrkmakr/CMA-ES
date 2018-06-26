@@ -36,7 +36,7 @@ class isa():
         self.reward_size = 1.0 / self.trial_max
         self.trial_result=[]
         
-        self.reward_wait_mode = True
+        self.action_mode = 'one'
             
     def reset(self, test = False):
         #session trial t_in_trial
@@ -116,7 +116,10 @@ class isa():
     
     def step(self,action):
         
-        action = action - self.center
+        if self.action_mode == 'xy':
+            action = action - self.center
+        elif self.action_mode == 'one':
+            action = self.act_proc(action)
         if len(action) != 2:
             print('action error')
             
