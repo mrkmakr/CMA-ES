@@ -6,6 +6,11 @@ from deap.benchmarks import rastrigin
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import gym
+import sys
+n_hidden = int(sys.argv[1])
+n_popu = int(sys.argv[2])
+n_best = int(sys.argv[3])
+
 
 def randn(shape):
     r = np.random.randn(shape[0],shape[1])
@@ -75,10 +80,12 @@ class gru_lin():
         
         
 
-env = isa(field_size=5,n_move=3)
+env = isa(field_size=10,n_move=5,trial_max = 10,tmax_trial = 5,n_session = 1)
+env.action_mode = 'xy'
 n_obs = env.n_obs
 n_act = env.n_act
-
+print('n_obs : ', n_obs)
+print('n_act : ', n_act)
 # env = gym.make("CartPole-v0")
 # n_obs = env.observation_space.high.shape[0]
 # n_act = env.action_space.n
@@ -86,14 +93,14 @@ n_act = env.n_act
 # env = gym.make("MountainCar-v0")
 # env = gym.make("Pendulum-v0")
 
-params_for_gru = (n_obs, 10, n_act)
+params_for_gru = (n_obs, n_hidden, n_act)
 model = gru_lin(*params_for_gru)
 n_dim = model.n_dim
 print('param_num :', n_dim)
 
 #simple CMAES 
-n_popu = 200
-n_best = 10
+n_popu = n_popu
+n_best = n_best
 mu = np.zeros(n_dim)
 cov = np.eye(n_dim)
 
@@ -110,10 +117,12 @@ def eval_model(env, param, params_for_gru = params_for_gru, render = False):
     
     observation = env.reset()
     reward_rec = []
-    for t in range(200):
+    for t in range(20000000):
 #         q = np.dot(observation, w)
         q = model.forward(observation)
-        action = np.argmax(q)
+        x = np.argmax(q[:int(n_act/2)])
+        y = np.argmax(q[int(n_act/2):])
+        action = np.array([x,y])
 #         action = q
         observation, reward, done, info = env.step(action)
         reward_rec.append(reward)
