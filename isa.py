@@ -15,7 +15,7 @@ class isa():
         self.reward_radius = reward_radius
         
         self.n_session = n_session
-        self.n_obs = self.field_size * 2 + 1
+        self.n_obs = self.field_size * 2 + 3
         
         ###
         self.n_move = n_move
@@ -54,6 +54,7 @@ class isa():
         self.t_cum = 0
         self.success_trial = 0
         self.fail_trial = 0
+        self.reward_cue_flag = False
         self.trial_result=[]
         self.pre_position_rec = []
         self.post_position_rec = []
@@ -70,7 +71,7 @@ class isa():
         self.transform_obs()
         
 #         return np.append(np.hstack([self.position_one_hot_xy,self.position_one_hot_xy]),[0,1])
-        return np.append(self.position_one_hot_xy,[0,1])
+        return np.append(self.position_one_hot_xy,[0,1,0])
 
     def reset_session(self):
         #session reset
@@ -114,6 +115,7 @@ class isa():
 
     
     def step(self,action):
+        
         action = action - self.center
         if len(action) != 2:
             print('action error')
@@ -141,13 +143,17 @@ class isa():
         self.transform_obs()
 #         obs = self.position_one_hot
         reward,dis = self.reward_check()
-        info = {'distance' : dis,
-                'trial'    : self.trial,
-                't_trial'  : self.t_trial,
-                'session'  : self.session,
-                'reward'   : self.reward_place,
-                'position' : self.position,
-                'action'   : action}
+        if reward > 0:
+            if self.reward_cue_flag == False:
+                self.reward_cue_flag = True
+                reward = 0
+            elif self.reward_cue_flag:
+                self.reward_cue_flag = False
+                reward = reward
+        elif reward == 0:
+            self.reward_cue_flag = False
+    
+
         
         
         if self.t_trial == self.tmax_trial or reward >0:
@@ -165,7 +171,6 @@ class isa():
                 
         if flag_trial_finish == True and self.trial in self.trial_session_change:
             flag_session_finish = True
-        
         
 
         if flag_session_finish:
@@ -190,7 +195,19 @@ class isa():
         new_trial_or_not = self.t_trial == 1
         self.trial_start_rec.append(new_trial_or_not)
         
-        return np.append(obs,[reward,flag_trial_finish]),reward,done,info
+        
+        if flag_trial_finish:
+            self.reward_cue_flag = 0
+        info = {'distance' : dis,
+                'trial'    : self.trial,
+                't_trial'  : self.t_trial,
+                'session'  : self.session,
+                'reward'   : self.reward_place,
+                'position' : self.position,
+                'action'   : action,
+                'reward_cue':self.reward_cue_flag}
+        
+        return np.append(obs,[reward,flag_trial_finish,self.reward_cue_flag]),reward,done,info
 #         return np.append(np.hstack([obs,pre_obs]),[reward,new_trial_or_not]),reward,done,info
             
     
@@ -202,7 +219,7 @@ class isa():
                 self.position[k] = 0
     def reward_check(self):
         dis = np.sqrt(np.sum((self.position - self.reward_place)**2))
-        if dis <= self.reward_radius:
+        if dis < self.reward_radius:
             reward = self.reward_size
         else:
             reward = 0
@@ -228,7 +245,7 @@ class isa():
         ideal_direction[ideal_direction < -self.center] = - self.center
 #         ideal_act = self.act_proc_inv(ideal_direction)
         ideal_act = ideal_direction
-        return ideal_act + self.center
+        return ideal_act
     
     def calc_reward_base(self,mode,n=100):
         r_sum_rec = []
