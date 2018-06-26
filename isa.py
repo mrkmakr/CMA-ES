@@ -35,6 +35,8 @@ class isa():
         self.t_cum = 0
         self.reward_size = 1.0 / self.trial_max
         self.trial_result=[]
+        
+        self.reward_wait_mode = True
             
     def reset(self, test = False):
         #session trial t_in_trial
@@ -63,8 +65,11 @@ class isa():
         self.reward_place_rec = []
         self.trial_finish_rec = []
         self.trial_start_rec = []
+        self.success_trial_rec = []
+        self.fail_trial_rec = []
         self.transform_obs()
         
+#         return np.append(np.hstack([self.position_one_hot_xy,self.position_one_hot_xy]),[0,1])
         return np.append(self.position_one_hot_xy,[0,1])
 
     def reset_session(self):
@@ -109,7 +114,7 @@ class isa():
 
     
     def step(self,action):
-        
+        action = action - self.center
         if len(action) != 2:
             print('action error')
             
@@ -132,6 +137,7 @@ class isa():
         self.action_rec.append(action)
 #         print('checked positon', self.position)
 
+        pre_obs = self.position_one_hot_xy.copy()
         self.transform_obs()
 #         obs = self.position_one_hot
         reward,dis = self.reward_check()
@@ -149,22 +155,25 @@ class isa():
             if reward > 0:
                 self.success_trial += 1
                 self.trial_result.append(self.t_trial)
+                self.success_trial_rec.append(1)
+                self.fail_trial_rec.append(0)
             else:
                 self.fail_trial += 1
                 self.trial_result.append(self.tmax_trial * 2)
+                self.success_trial_rec.append(0)
+                self.fail_trial_rec.append(1)
                 
         if flag_trial_finish == True and self.trial in self.trial_session_change:
             flag_session_finish = True
         
         
+
         if flag_session_finish:
             self.reset_session()
-#             obs = self.position_one_hot
+            
         if flag_trial_finish:
             self.reset_trial()
-#             obs = self.position_one_hot
             
-#         obs = self.position_one_hot
         obs = self.position_one_hot_xy
         
         
@@ -181,9 +190,8 @@ class isa():
         new_trial_or_not = self.t_trial == 1
         self.trial_start_rec.append(new_trial_or_not)
         
-        
-        
-        return np.append(obs,[reward,new_trial_or_not]),reward,done,info
+        return np.append(obs,[reward,flag_trial_finish]),reward,done,info
+#         return np.append(np.hstack([obs,pre_obs]),[reward,new_trial_or_not]),reward,done,info
             
     
     def check_position(self):
@@ -220,7 +228,7 @@ class isa():
         ideal_direction[ideal_direction < -self.center] = - self.center
 #         ideal_act = self.act_proc_inv(ideal_direction)
         ideal_act = ideal_direction
-        return ideal_act
+        return ideal_act + self.center
     
     def calc_reward_base(self,mode,n=100):
         r_sum_rec = []
